@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export const AuthContext = createContext();
 
@@ -11,83 +12,62 @@ export const AuthProvider = ({ children }) => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
 
+    const fetchUser = async (token) => {
+      try {
+        const { data } = await axios.get("http://localhost:5000/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (data.user) {
+          setUser(data.user);
+          if (params.get("token")) navigate("/dashboard");
+        } else {
+          localStorage.removeItem("token");
+        }
+      } catch (err) {
+        console.error("Error validating token", err);
+        localStorage.removeItem("token");
+      }
+    };
+
     if (token) {
       localStorage.setItem("token", token);
-
-      fetch("http://localhost:5000/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user) {
-            setUser(data.user);
-            navigate("/dashboard");
-          }
-        })
-        .catch((err) => {
-          console.error("Error fetching user after Google login", err);
-        });
+      fetchUser(token);
     } else {
-      // If token already exists, check user
-      const token = localStorage.getItem("token");
-      if (token) {
-        fetch("http://localhost:5000/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.user) {
-              setUser(data.user);
-            } else {
-              localStorage.removeItem("token");
-            }
-          })
-          .catch((err) => {
-            console.error("Error validating token", err);
-          });
-      }
+      const storedToken = localStorage.getItem("token");
+      if (storedToken) fetchUser(storedToken);
     }
   }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      const { data } = await axios.post("http://localhost:5000/api/auth/login", {
+        email,
+        password,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to login");
-      }
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("refreshToken", data.refreshToken);
       setUser(data.user);
       navigate("/dashboard");
     } catch (error) {
-      console.error(error);
+      console.error(error.response?.data?.message || "Login failed", error);
     }
   };
 
   const loginWithGoogle = () => {
     console.log("Redirecting to Google...");
-    window.location.href = "http://localhost:5000/api/auth/google-login"; // Correct redirect
-
+    window.location.href = "http://localhost:5000/api/auth/google-login";
   };
 
   const logout = async () => {
-    await fetch("/api/logout", { method: "POST" });
-    setUser(null);
-    window.location.href = "/login";
+    try {
+      await axios.post("/api/logout");
+      setUser(null);
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
 
   return (

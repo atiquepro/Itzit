@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Signup = () => {
     const [name, setName] = useState('');
@@ -10,32 +11,20 @@ const Signup = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-    
+
         try {
-            const response = await fetch('http://localhost:5000/api/auth/signup', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password,
-                    role: 'user',
-                    secretKey: '',
-                }),
+            const { data } = await axios.post('http://localhost:5000/api/auth/signup', {
+                name,
+                email,
+                password,
+                role: 'user',
+                secretKey: '',
             });
-    
-            const data = await response.json();
-    
-            if (response.ok) {
-                navigate('/login');
-            } else {
-                setError(data.message || 'Error signing up');
-            }
-        } catch (error) {
-            console.error(error);
-            setError('Error signing up');
+
+            navigate('/login');
+        } catch (err) {
+            console.error(err);
+            setError(err.response?.data?.message || 'Error signing up');
         }
     };
 

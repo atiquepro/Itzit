@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken"
 import User from "../models/User.js"
 import AdminAuth from "../middleware/AdminAuth.js"
 import authMiddleware from "../middleware/auth.js"
+import forgotPassword from "../controllers/authController.js"
+import { resetPassword } from "../controllers/authController.js"
 
 const router = express.Router()
 
@@ -56,9 +58,13 @@ router.post("/login", async(req, res) => {
 
 
     }catch (error){
-        res.status(500).json({message: "Error Logging In"}, error)
+        res.status(500).json({message: "Error Logging In", error: error.message})
+
     }
 })
+
+router.post("/forgot-password", forgotPassword);
+router.post('/reset-password', resetPassword);
 
 //Refresh Token Route
 router.post('/refresh-token', async(req, res) => {
